@@ -3,6 +3,7 @@ export type ServiceStatus = 'Open' | 'Closed' | 'On Hold' | 'In Progress' | 'Clo
 export type ServicePriority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest';
 export type ServiceType = 'Corrective' | 'Preventive' | 'Project' | 'Upgrade' | 'Inspection' | 'Meter Reading' | 'Safety' | 'Other';
 export type ScheduleFrequency = 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Annually' | 'Quinquennial';
+export type CategoryType = 'Equipment' | 'Facility' | 'Tool' | 'Other';
 
 export interface BaseEntity {
   id: string;
@@ -16,6 +17,12 @@ export interface Location extends BaseEntity {
   parent_location_id: string | null;
 }
 
+export interface Category extends BaseEntity {
+  type: CategoryType;
+  name: string;
+  description: string | null;
+}
+
 export interface Asset extends BaseEntity {
   asset_number: string;
   name: string;
@@ -24,12 +31,16 @@ export interface Asset extends BaseEntity {
   manufacturer: string | null;
   model: string | null;
   serial_number: string | null;
+  manufacture_date: string | null;
   purchase_date: string | null;
-  purchase_cost: number | null;
+  purchase_price: number | null;
+  warranty_expiry: string | null;
+  in_service_date: string | null;
+  where_used: string | null;
   status: AssetStatus | null;
   location_id: string | null;
   notes: string | null;
-  location?: Location | null;
+  location?: Location;
 }
 
 export interface ServiceProvider extends BaseEntity {
@@ -62,10 +73,14 @@ export interface ServiceRequest extends BaseEntity {
   actual_minutes?: number;
   assigned_to?: string;
   completed_by?: string;
+  performed_by?: string;
+  purchased_from?: string;
   team_id?: string;
   asset?: Asset;
   assignedProvider?: ServiceProvider;
   completedByProvider?: ServiceProvider;
+  performedByProvider?: ServiceProvider;
+  supplier?: Supplier;
   team?: ServiceTeam;
 }
 

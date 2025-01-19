@@ -101,6 +101,24 @@ export type Database = {
           },
         ]
       }
+      categories: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+        }
+        Relationships: []
+      }
       inventory: {
         Row: {
           category: string | null

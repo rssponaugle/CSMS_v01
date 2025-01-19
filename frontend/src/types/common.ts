@@ -34,6 +34,7 @@ export interface Asset extends BaseEntity {
   manufacture_date: string | null;
   purchase_date: string | null;
   purchase_price: number | null;
+  purchased_from: string | null;
   warranty_expiry: string | null;
   in_service_date: string | null;
   where_used: string | null;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AssetStatus } from '../../types/common';
 import {
   Box,
   Typography,
@@ -214,21 +215,35 @@ export const Assets: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      // Ensure required fields are provided
+      // Ensure required fields are present
       if (!formData.asset_number || !formData.name) {
         setSnackbar({
           open: true,
-          message: 'Asset number and name are required',
+          message: 'Asset number and name are required fields',
           severity: 'error'
         });
         return;
       }
 
-      // At this point TypeScript knows asset_number and name are defined
       const assetData = {
-        ...formData,
         asset_number: formData.asset_number,
-        name: formData.name
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        manufacturer: formData.manufacturer,
+        model: formData.model,
+        serial_number: formData.serial_number,
+        manufacture_date: formData.manufacture_date,
+        purchase_date: formData.purchase_date,
+        purchase_price: formData.purchase_price ? Number(formData.purchase_price) : null,
+        purchased_from: formData.purchased_from,
+        warranty_expiry: formData.warranty_expiry,
+        in_service_date: formData.in_service_date,
+        where_used: formData.where_used,
+        status: formData.status === undefined ? undefined : 
+          (formData.status === null ? null : formData.status as AssetStatus),
+        location_id: formData.location_id,
+        notes: formData.notes
       };
 
       if (formData.id) {
@@ -244,11 +259,12 @@ export const Assets: React.FC = () => {
         severity: 'success' 
       });
     } catch (error) {
-      console.error('Error saving asset:', error);
-      setSnackbar({ 
-        open: true, 
-        message: `Error ${formData.id ? 'updating' : 'creating'} asset`, 
-        severity: 'error' 
+      console.error('Error in handleSave:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
       });
     }
   };

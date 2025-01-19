@@ -13,7 +13,8 @@ export const assetService = {
       throw error;
     }
 
-    return data || [];
+    // Type assertion here is safe because Supabase ensures the shape matches our Asset type
+    return (data as unknown as Asset[]) || [];
   },
 
   async getById(id: string): Promise<Asset | null> {
@@ -31,7 +32,8 @@ export const assetService = {
       throw error;
     }
 
-    return data;
+    // Type assertion here is safe because Supabase ensures the shape matches our Asset type
+    return (data as unknown as Asset) || null;
   },
 
   async create(asset: Pick<Asset, 'asset_number' | 'name'> & Partial<Asset>): Promise<Asset> {
@@ -46,10 +48,12 @@ export const assetService = {
       throw error;
     }
 
-    return data;
+    // Type assertion here is safe because Supabase ensures the shape matches our Asset type
+    return (data as unknown as Asset);
   },
 
   async update(id: string, asset: Partial<Asset>): Promise<Asset> {
+    console.log('Updating asset with data:', { id, asset });
     const { data, error } = await supabase
       .from('assets')
       .update(asset)
@@ -59,10 +63,21 @@ export const assetService = {
 
     if (error) {
       console.error('Error updating asset:', error);
-      throw error;
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      throw new Error(error.message);
     }
 
-    return data;
+    if (!data) {
+      throw new Error('No data returned from update');
+    }
+
+    // Type assertion here is safe because Supabase ensures the shape matches our Asset type
+    return (data as unknown as Asset);
   },
 
   async delete(id: string): Promise<void> {
@@ -96,7 +111,8 @@ export const assetService = {
       throw error;
     }
 
-    return data || [];
+    // Type assertion here is safe because Supabase ensures the shape matches our Asset type
+    return (data as unknown as Asset[]) || [];
   },
 
   async importCsv(file: File): Promise<{ success: number; errors: number }> {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AssetStatus } from '../../types/common';
 import {
   Box,
   Typography,
@@ -29,7 +28,7 @@ import {
 } from '@mui/icons-material';
 import { assetService } from '../../services/assetService';
 import { locationService } from '../../services/locationService';
-import { Asset, Location } from '../../types/common';
+import { Asset, Location, AssetStatus } from '../../types/common';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -225,34 +224,42 @@ export const Assets: React.FC = () => {
         return;
       }
 
+      // Transform numeric values and dates properly
       const assetData = {
-        asset_number: formData.asset_number,
-        name: formData.name,
-        description: formData.description,
-        category: formData.category,
-        manufacturer: formData.manufacturer,
-        model: formData.model,
-        serial_number: formData.serial_number,
-        manufacture_date: formData.manufacture_date,
-        purchase_date: formData.purchase_date,
+        asset_number: formData.asset_number.trim(),
+        name: formData.name.trim(),
+        description: formData.description?.trim() || null,
+        category: formData.category || null,
+        manufacturer: formData.manufacturer?.trim() || null,
+        model: formData.model?.trim() || null,
+        serial_number: formData.serial_number?.trim() || null,
+        manufacture_date: formData.manufacture_date || null,
+        purchase_date: formData.purchase_date || null,
         purchase_price: formData.purchase_price ? Number(formData.purchase_price) : null,
-        purchased_from: formData.purchased_from,
-        warranty_expiry: formData.warranty_expiry,
-        in_service_date: formData.in_service_date,
-        where_used: formData.where_used,
-        status: formData.status === undefined ? undefined : 
-          (formData.status === null ? null : formData.status as AssetStatus),
-        location_id: formData.location_id,
-        notes: formData.notes
+        purchased_from: formData.purchased_from?.trim() || null,
+        warranty_expiry: formData.warranty_expiry || null,
+        in_service_date: formData.in_service_date || null,
+        where_used: formData.where_used?.trim() || null,
+        status: formData.status as AssetStatus | null,
+        location_id: formData.location_id || null,
+        notes: formData.notes?.trim() || null
       };
 
+      console.log('Attempting to save asset:', {
+        id: formData.id,
+        data: assetData
+      });
+
       if (formData.id) {
-        await assetService.update(formData.id, assetData);
+        const updatedAsset = await assetService.update(formData.id, assetData);
+        console.log('Asset updated successfully:', updatedAsset);
       } else {
-        await assetService.create(assetData);
+        const newAsset = await assetService.create(assetData);
+        console.log('Asset created successfully:', newAsset);
       }
+
       setOpenDialog(false);
-      loadAssets();
+      await loadAssets(); // Make sure to await this
       setSnackbar({ 
         open: true, 
         message: `Asset ${formData.id ? 'updated' : 'created'} successfully`, 
@@ -260,10 +267,22 @@ export const Assets: React.FC = () => {
       });
     } catch (error) {
       console.error('Error in handleSave:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      let errorMessage = 'An unexpected error occurred';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        // Log additional error properties if they exist
+        if ('code' in error) {
+          console.error('Error code:', (error as any).code);
+        }
+        if ('details' in error) {
+          console.error('Error details:', (error as any).details);
+        }
+      }
+      
       setSnackbar({
         open: true,
-        message: errorMessage,
+        message: `Error ${formData.id ? 'updating' : 'creating'} asset: ${errorMessage}`,
         severity: 'error'
       });
     }
@@ -324,7 +343,7 @@ export const Assets: React.FC = () => {
     if (orderBy === 'location') {
       const aValue = a.location?.name?.toString().toLowerCase() || '';
       const bValue = b.location?.name?.toString().toLowerCase() || '';
-      return (order === 'asc' ? 1 : -1) * (aValue < bValue ? -1 : aValue > bValue ? 1 : 0);
+      return (order === 'desc' ? 1 : -1) * (aValue < bValue ? -1 : aValue > bValue ? 1 : 0);
     }
     
     const aValue = a[orderBy]?.toString().toLowerCase() || '';
@@ -333,9 +352,29 @@ export const Assets: React.FC = () => {
   });
 
   return (
-    <Box sx={{ p: 1 }}>
-      <Paper sx={{ p: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+    <Box sx={{ p: 1, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ 
+        backgroundColor: '#433d3f', 
+        p: 2, 
+        borderRadius: '5px',
+        textAlign: 'center',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1100,
+      }}>
+        <Typography 
+          variant="h4" 
+          sx={{ 
+            color: '#ffffff',
+            fontSize: '2.4em',
+            fontWeight: 500
+          }}
+        >
+          Service Management System
+        </Typography>
+      </Box>
+      <Paper sx={{ p: 1, mt: 2, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, position: 'sticky', top: 0, zIndex: 1000, backgroundColor: '#fff' }}>
           <Typography 
             variant="h5" 
             sx={{ 
@@ -354,32 +393,32 @@ export const Assets: React.FC = () => {
           </Button>
         </Box>
 
-        <TableContainer sx={{ width: '100%' }}>
+        <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
           <Table sx={{ 
             width: '100%',
             tableLayout: 'fixed',
             '& .MuiTableRow-root': { height: '14px' },
             '& .MuiTableBody-root .MuiTableRow-root:nth-of-type(odd)': {
-              backgroundColor: 'rgba(0, 0, 0, 0.04)'
+              backgroundColor: '#d4e6f1'
+            },
+            '& .MuiTableBody-root .MuiTableRow-root:nth-of-type(even)': {
+              backgroundColor: '#ffffff'
             },
             '& .MuiTableCell-root': { 
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               padding: '2px 8px',
-              position: 'relative'
+              position: 'relative',
+              verticalAlign: 'middle',
+              height: '30px',
+              lineHeight: '30px'
             },
-            '& .react-resizable-handle': {
-              position: 'absolute',
-              right: 0,
+            '& .MuiTableHead-root': {
+              position: 'sticky',
               top: 0,
-              height: '100%',
-              width: '10px',
-              cursor: 'col-resize',
               zIndex: 1000,
-              '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.1)'
-              }
+              backgroundColor: '#fff'
             }
           }}>
             <TableHead>
@@ -396,14 +435,15 @@ export const Assets: React.FC = () => {
                       cursor: column.sortable ? 'pointer' : 'default',
                       width: column.width,
                       minWidth: column.width,
-                      maxWidth: column.width
+                      maxWidth: column.width,
+                      color: '#0638d4'
                     }}
                     title={column.label}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       {column.label}
                       {column.sortable && orderBy === column.id && (
-                        <Box component="span" sx={{ ml: 1 }}>
+                        <Box component="span" sx={{ ml: 1, color: '#000000', fontWeight: 900, fontSize: '1.2em' }}>
                           {order === 'desc' ? '↓' : '↑'}
                         </Box>
                       )}
@@ -428,13 +468,13 @@ export const Assets: React.FC = () => {
                       {column.id === 'actions' ? (
                         <>
                           <IconButton onClick={() => handleOpenDetailsDialog(asset)} size="small" title="Details">
-                            <InfoIcon sx={{ fontSize: '1rem' }} />
+                            <InfoIcon sx={{ fontSize: '1rem', color: '#4a536d' }} />
                           </IconButton>
                           <IconButton onClick={() => handleOpenDialog(asset)} size="small" title="Edit">
-                            <EditIcon sx={{ fontSize: '1rem' }} />
+                            <EditIcon sx={{ fontSize: '1rem', color: '#e67e22' }} />
                           </IconButton>
                           <IconButton onClick={() => handleDelete(asset.id)} size="small" title="Delete">
-                            <DeleteIcon sx={{ fontSize: '1rem' }} />
+                            <DeleteIcon sx={{ fontSize: '1rem', color: '#c0392b' }} />
                           </IconButton>
                         </>
                       ) : column.id === 'location' ? (
@@ -475,6 +515,60 @@ export const Assets: React.FC = () => {
                 }
               }}>
                 <TextField
+                  label="Asset Number"
+                  value={selectedAsset.asset_number || ''}
+                  InputProps={{ readOnly: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="Name"
+                  value={selectedAsset.name || ''}
+                  InputProps={{ readOnly: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="Category"
+                  value={selectedAsset.category || ''}
+                  InputProps={{ readOnly: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="Manufacturer"
+                  value={selectedAsset.manufacturer || ''}
+                  InputProps={{ readOnly: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="Model"
+                  value={selectedAsset.model || ''}
+                  InputProps={{ readOnly: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="Serial Number"
+                  value={selectedAsset.serial_number || ''}
+                  InputProps={{ readOnly: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="Status"
+                  value={selectedAsset.status || ''}
+                  InputProps={{ readOnly: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="Location"
+                  value={selectedAsset.location?.name || ''}
+                  InputProps={{ readOnly: true }}
+                  fullWidth
+                />
+                <TextField
+                  label="Where Used"
+                  value={selectedAsset.where_used || ''}
+                  InputProps={{ readOnly: true }}
+                  fullWidth
+                />
+                <TextField
                   label="Manufacture Date"
                   value={selectedAsset.manufacture_date ? new Date(selectedAsset.manufacture_date).toLocaleDateString() : ''}
                   InputProps={{ readOnly: true }}
@@ -509,6 +603,15 @@ export const Assets: React.FC = () => {
                   value={selectedAsset.warranty_expiry ? new Date(selectedAsset.warranty_expiry).toLocaleDateString() : ''}
                   InputProps={{ readOnly: true }}
                   fullWidth
+                />
+                <TextField
+                  label="Description"
+                  value={selectedAsset.description || ''}
+                  InputProps={{ readOnly: true }}
+                  multiline
+                  rows={4}
+                  fullWidth
+                  sx={{ gridColumn: 'span 2' }}
                 />
                 <TextField
                   label="Notes"
@@ -573,10 +676,47 @@ export const Assets: React.FC = () => {
               />
               <TextField
                 label="Category"
-                value={formData.category}
-                onChange={handleInputChange}
+                value={formData.category || ''}
+                onChange={handleSelectChange}
                 name="category"
-              />
+                select
+              >
+                <MenuItem value="Air Compressor">Air Compressor</MenuItem>
+                <MenuItem value="Air Dryer">Air Dryer</MenuItem>
+                <MenuItem value="Air Filtration">Air Filtration</MenuItem>
+                <MenuItem value="Building & Grounds">Building & Grounds</MenuItem>
+                <MenuItem value="Chiller">Chiller</MenuItem>
+                <MenuItem value="CNC Equipment">CNC Equipment</MenuItem>
+                <MenuItem value="Data Monitoring/Collection">Data Monitoring/Collection</MenuItem>
+                <MenuItem value="Fan">Fan</MenuItem>
+                <MenuItem value="Fork Lift">Fork Lift</MenuItem>
+                <MenuItem value="Hoist">Hoist</MenuItem>
+                <MenuItem value="HVAC">HVAC</MenuItem>
+                <MenuItem value="Injection Molder">Injection Molder</MenuItem>
+                <MenuItem value="Lighting">Lighting</MenuItem>
+                <MenuItem value="Material Blender">Material Blender</MenuItem>
+                <MenuItem value="Material Feeder">Material Feeder</MenuItem>
+                <MenuItem value="Material Grinder">Material Grinder</MenuItem>
+                <MenuItem value="Material Loader">Material Loader</MenuItem>
+                <MenuItem value="Office Equipment">Office Equipment</MenuItem>
+                <MenuItem value="Packaging Sealer">Packaging Sealer</MenuItem>
+                <MenuItem value="Parts Storage">Parts Storage</MenuItem>
+                <MenuItem value="Product Storage">Product Storage</MenuItem>
+                <MenuItem value="Pump">Pump</MenuItem>
+                <MenuItem value="Resin Dryer">Resin Dryer</MenuItem>
+                <MenuItem value="Robot">Robot</MenuItem>
+                <MenuItem value="Scale">Scale</MenuItem>
+                <MenuItem value="Support Equipment">Support Equipment</MenuItem>
+                <MenuItem value="TCU-Hot Runner">TCU-Hot Runner</MenuItem>
+                <MenuItem value="TCU-Oil">TCU-Oil</MenuItem>
+                <MenuItem value="TCU-Water">TCU-Water</MenuItem>
+                <MenuItem value="Test Equipment">Test Equipment</MenuItem>
+                <MenuItem value="Ultrasonic Welder">Ultrasonic Welder</MenuItem>
+                <MenuItem value="Utilities">Utilities</MenuItem>
+                <MenuItem value="Vacuum Conveyor">Vacuum Conveyor</MenuItem>
+                <MenuItem value="Vehicle/Trailer">Vehicle/Trailer</MenuItem>
+                <MenuItem value="Vision Inspection">Vision Inspection</MenuItem>
+              </TextField>
               <TextField
                 label="Model"
                 value={formData.model}
@@ -608,10 +748,11 @@ export const Assets: React.FC = () => {
                 name="status"
                 select
               >
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="inactive">Inactive</MenuItem>
-                <MenuItem value="maintenance">Maintenance</MenuItem>
-                <MenuItem value="retired">Retired</MenuItem>
+                <MenuItem value="In Service">In Service</MenuItem>
+                <MenuItem value="Out of Service">Out of Service</MenuItem>
+                <MenuItem value="Scrapped">Scrapped</MenuItem>
+                <MenuItem value="Sold">Sold</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
               </TextField>
               <TextField
                 label="Location"

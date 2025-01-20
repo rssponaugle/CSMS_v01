@@ -54,30 +54,48 @@ export const assetService = {
 
   async update(id: string, asset: Partial<Asset>): Promise<Asset> {
     console.log('Updating asset with data:', { id, asset });
-    const { data, error } = await supabase
-      .from('assets')
-      .update(asset)
-      .eq('id', id)
-      .select()
-      .single();
+    
+    try {
+      // Remove any undefined values from the asset object
+      const cleanedAsset = Object.fromEntries(
+        Object.entries(asset).filter(([_, value]) => value !== undefined)
+      );
 
-    if (error) {
-      console.error('Error updating asset:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
-      });
-      throw new Error(error.message);
+      console.log('Cleaned asset data:', cleanedAsset);
+
+      const { data, error } = await supabase
+        .from('assets')
+        .update(cleanedAsset)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Supabase error updating asset:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      if (!data) {
+        console.error('No data returned from update');
+        throw new Error('Failed to update asset: No data returned from database');
+      }
+
+      console.log('Successfully updated asset:', data);
+      return data as unknown as Asset;
+    } catch (error) {
+      console.error('Caught error in update:', error);
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        throw new Error('Failed to update asset: Unknown error occurred');
+      }
     }
-
-    if (!data) {
-      throw new Error('No data returned from update');
-    }
-
-    // Type assertion here is safe because Supabase ensures the shape matches our Asset type
-    return (data as unknown as Asset);
   },
 
   async delete(id: string): Promise<void> {
